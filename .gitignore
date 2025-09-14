@@ -1,3 +1,8 @@
-./serviceAccountKey.json
-./node_modules
-./env
+# Ignorar dependencias
+/node_modules
+
+# Ignorar credenciales
+/serviceAccountKey.json
+
+# Ignorar variables de entorno
+.env
