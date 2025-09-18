@@ -1,5 +1,5 @@
 class Business {
-  constructor(idNegocio, uid, nombreNegocio, sector, capitalInicial) {
+  constructor(idNegocio, uid, nombreNegocio, descripcion, sector, capitalInicial) {
     this.idNegocio = idNegocio;
     this.uid = uid; // referencia al User
     this.nombreNegocio = nombreNegocio;
