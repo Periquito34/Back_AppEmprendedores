@@ -127,4 +127,54 @@ async function getBusinessByUserId(req, res) {
   }
 }
 
-module.exports = { createBusiness, getBusinessByUserId };
+// PUT - Actualizar negocio
+async function updateBusiness(req, res) {
+  try {
+    const uid = req.user?.uid; // viene del middleware verifyFirebaseToken
+    if (!uid) return res.status(401).json({ message: 'No autenticado' });
+
+    const { idNegocio } = req.params; // ID del negocio en la URL
+    const { nombreNegocio, descripcion, sector, capitalInicial } = req.body;
+
+    const negocioRef = admin.firestore().collection('businesses').doc(idNegocio);
+    const doc = await negocioRef.get();
+
+    if (!doc.exists) {
+      return res.status(404).json({ message: 'Negocio no encontrado' });
+    }
+
+    // Validar que el negocio pertenece al usuario autenticado
+    if (doc.data().uid !== uid) {
+      return res.status(403).json({ message: 'No tienes permisos para modificar este negocio' });
+    }
+
+    // Construir objeto con los datos que se pueden actualizar
+    const updatedData = {};
+    if (nombreNegocio !== undefined) updatedData.nombreNegocio = nombreNegocio;
+    if (descripcion !== undefined) updatedData.descripcion = descripcion;
+    if (sector !== undefined) updatedData.sector = sector;
+    if (capitalInicial !== undefined) {
+      const capital = Number(capitalInicial);
+      if (!Number.isFinite(capital) || capital < 0) {
+        return res.status(400).json({ message: 'capitalInicial debe ser un número válido >= 0' });
+      }
+      updatedData.capitalInicial = capital;
+    }
+
+    if (Object.keys(updatedData).length === 0) {
+      return res.status(400).json({ message: 'No se enviaron campos para actualizar' });
+    }
+
+    await negocioRef.update(updatedData);
+
+    return res.status(200).json({
+      message: 'Negocio actualizado con éxito',
+      data: { idNegocio, ...updatedData }
+    });
+
+  } catch (error) {
+    return res.status(500).json({ message: 'Error al actualizar negocio', error: error.message });
+  }
+}
+
+module.exports = { createBusiness, getBusinessByUserId, updateBusiness };

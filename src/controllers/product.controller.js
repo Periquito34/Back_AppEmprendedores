@@ -95,4 +95,40 @@ async function getProductsByBusiness(req, res) {
   }
 }
 
-module.exports = { createProduct, decreaseStock, getProductsByBusiness };
+// PUT - Actualizar un producto
+async function updateProduct(req, res) {
+  try {
+    const { idProducto } = req.params; // ID del producto en la URL
+    const { nombreProducto, precioVenta, costoProduccion, stock } = req.body;
+
+    // Referencia al documento
+    const productRef = admin.firestore().collection('products').doc(idProducto);
+    const doc = await productRef.get();
+
+    if (!doc.exists) {
+      return res.status(404).json({ message: 'Producto no encontrado' });
+    }
+
+    // Actualizar solo los campos enviados
+    const updatedData = {};
+    if (nombreProducto !== undefined) updatedData.nombreProducto = nombreProducto;
+    if (precioVenta !== undefined) updatedData.precioVenta = precioVenta;
+    if (costoProduccion !== undefined) updatedData.costoProduccion = costoProduccion;
+    if (stock !== undefined) updatedData.stock = stock;
+
+    await productRef.update(updatedData);
+
+    return res.status(200).json({
+      message: 'Producto actualizado con éxito',
+      data: { idProducto, ...updatedData }
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Error al actualizar producto',
+      error: error.message
+    });
+  }
+}
+
+module.exports = { createProduct, decreaseStock, getProductsByBusiness, updateProduct };
