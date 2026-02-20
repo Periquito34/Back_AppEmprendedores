@@ -10,6 +10,7 @@ const productSoldRoutes = require('./routes/productSold.routes');
 const productRoutes = require('./routes/product.routes');
 const transactionRoutes = require('./routes/transaction.routes');
 const gastoFijoRoutes = require('./routes/gastoFijo.routes');
+const rentabilidadRoutes = require('./routes/rentabilidad.routes');
 
 
 const app = express();
@@ -25,6 +26,7 @@ app.use('/api/product-sold', productSoldRoutes);
 app.use('/api/product', productRoutes);
 app.use('/api/transaction', transactionRoutes);
 app.use('/api/gasto-fijo', gastoFijoRoutes);
+app.use('/api/rentabilidad', rentabilidadRoutes);
 
 // Prueba de servidor
 app.get('/', (req, res) => {

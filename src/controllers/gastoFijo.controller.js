@@ -77,7 +77,7 @@ async function markGastoFijoAsPaid(req, res) {
   }
 }
 
-// Obtener gastos fijos por negocio
+// Obtener gastos fijos por negocio (sumando costoGasto)
 async function getGastosFijosByBusiness(req, res) {
   try {
     const { idNegocio } = req.params;
@@ -95,17 +95,58 @@ async function getGastosFijosByBusiness(req, res) {
       return res.status(404).json({ message: 'No se encontraron gastos fijos para este negocio' });
     }
 
-    const gastos = snapshot.docs.map(doc => ({
-      idGasto: doc.id,
-      ...doc.data()
-    })); 
+    let totalCostos = 0;
+    let totalPagados = 0;
+    let totalNoPagados = 0;
+    let countPagados = 0;
+    let countNoPagados = 0;
+
+    const gastos = snapshot.docs.map((doc) => {
+      const data = doc.data();
+
+      // 👇 Usamos SOLAMENTE costoGasto para las sumas
+      const costo = Number(data.costoGasto) || 0;
+      const pagado = Boolean(data.pagado);
+
+      totalCostos += costo;
+      if (pagado) {
+        totalPagados += costo;
+        countPagados += 1;
+      } else {
+        totalNoPagados += costo;
+        countNoPagados += 1;
+      }
+
+      // Normaliza fecha si necesitas
+      const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt;
+
+      return {
+        idGasto: doc.id,
+        ...data,
+        costoGasto: costo,                      // aseguramos número
+        pagado,                                 // booleano normalizado
+        createdAt,
+        createdAtISO: createdAt instanceof Date ? createdAt.toISOString() : createdAt ?? null,
+      };
+    });
 
     return res.status(200).json({
       message: `Gastos fijos del negocio ${idNegocio}`,
+      totals: {
+        totalGastos: totalCostos,               // suma de costoGasto (todos)
+        totalPagados,                           // suma de costoGasto (pagados)
+        totalNoPagados                          // suma de costoGasto (no pagados)
+      },
+      counts: {
+        total: gastos.length,
+        pagados: countPagados,
+        noPagados: countNoPagados
+      },
       data: gastos
     });
 
   } catch (error) {
+    console.error('Error al obtener gastos fijos:', error);
     return res.status(500).json({
       message: 'Error al obtener gastos fijos',
       error: error.message
@@ -113,7 +154,43 @@ async function getGastosFijosByBusiness(req, res) {
   }
 }
 
-// Obtener gastos fijos pagados en un mes específico
+// Suma de costoGasto para todos los gastos fijos de un negocio
+async function getTotalGastosFijosByBusiness(req, res) {
+  try {
+    const { idNegocio } = req.params;
+    if (!idNegocio) {
+      return res.status(400).json({ message: 'El idNegocio es requerido' });
+    }
+
+    const snap = await admin.firestore()
+      .collection('gastosFijos')
+      .where('idNegocio', '==', idNegocio)
+      .get();
+
+    let totalCostos = 0;
+    snap.forEach(doc => {
+      const costo = Number(doc.get('costoGasto')) || 0;
+      totalCostos += costo;
+    });
+
+    return res.status(200).json({
+      idNegocio,
+      totalCostos,
+      count: snap.size
+    });
+  } catch (error) {
+    console.error('Error al sumar gastos fijos:', error);
+    return res.status(500).json({
+      message: 'Error al sumar gastos fijos',
+      error: error.message
+    });
+  }
+}
+
+module.exports = { getTotalGastosFijosByBusiness };
+
+
+// Obtener gastos fijos pagados en un mes específico (con total de lo pagado)
 async function getGastosFijosPagadosByMonth(req, res) {
   try {
     const { idNegocio, year, month } = req.params;
@@ -122,7 +199,7 @@ async function getGastosFijosPagadosByMonth(req, res) {
       return res.status(400).json({ message: 'idNegocio, year y month son requeridos' });
     }
 
-    // Parseamos año y mes a enteros
+    // Parseamos año y mes
     const yearInt = parseInt(year, 10);
     const monthInt = parseInt(month, 10); // Enero = 1, Febrero = 2 ...
 
@@ -130,10 +207,9 @@ async function getGastosFijosPagadosByMonth(req, res) {
       return res.status(400).json({ message: 'Mes o año inválidos' });
     }
 
-    // Primer día del mes
-    const startDate = new Date(yearInt, monthInt - 1, 1);
-    // Último día del mes (0 devuelve el último día del mes anterior)
-    const endDate = new Date(yearInt, monthInt, 0, 23, 59, 59);
+    // Rango de fechas del mes
+    const startDate = new Date(yearInt, monthInt - 1, 1, 0, 0, 0, 0);
+    const endDate   = new Date(yearInt, monthInt, 0, 23, 59, 59, 999);
 
     // Consulta en Firestore
     const snapshot = await admin.firestore()
@@ -145,20 +221,56 @@ async function getGastosFijosPagadosByMonth(req, res) {
       .get();
 
     if (snapshot.empty) {
+      // Si prefieres 200 con total=0, cambia este return por el bloque de abajo comentado
       return res.status(404).json({ message: 'No se encontraron gastos pagados en ese mes' });
+
+      /*
+      return res.status(200).json({
+        message: `Gastos fijos pagados del negocio ${idNegocio} en ${monthInt}/${yearInt}`,
+        totalGastosPagados: 0,
+        count: 0,
+        data: []
+      });
+      */
     }
 
-    const gastos = snapshot.docs.map(doc => ({
-      idGasto: doc.id,
-      ...doc.data()
-    }));
+    let totalGastosPagados = 0;
+
+    const gastos = snapshot.docs.map(doc => {
+      const data = doc.data();
+
+      // Soportar distintos nombres de campo para el monto
+      const valor = Number(
+        data.monto ??
+        data.valor ??
+        data.precio ??
+        data.total ??
+        0
+      ) || 0;
+
+      totalGastosPagados += valor;
+
+      // Normalizar fecha
+      const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt;
+
+      return {
+        idGasto: doc.id,
+        ...data,
+        valor, // monto usado para la suma
+        createdAt,
+        createdAtISO: createdAt instanceof Date ? createdAt.toISOString() : null
+      };
+    });
 
     return res.status(200).json({
-      message: `Gastos fijos pagados del negocio ${idNegocio} en ${month}/${year}`,
+      message: `Gastos fijos pagados del negocio ${idNegocio} en ${monthInt}/${yearInt}`,
+      totalGastosPagados,
+      count: gastos.length,
       data: gastos
     });
 
   } catch (error) {
+    console.error('Error al obtener gastos fijos pagados:', error);
     return res.status(500).json({
       message: 'Error al obtener gastos fijos pagados',
       error: error.message
@@ -166,4 +278,5 @@ async function getGastosFijosPagadosByMonth(req, res) {
   }
 }
 
-module.exports = { createGastoFijo, markGastoFijoAsPaid, getGastosFijosByBusiness, getGastosFijosPagadosByMonth };
+
+module.exports = { createGastoFijo, markGastoFijoAsPaid, getGastosFijosByBusiness, getGastosFijosPagadosByMonth, getTotalGastosFijosByBusiness };

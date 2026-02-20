@@ -119,7 +119,113 @@ async function getTransaccionesByNegocio(req, res) {
   }
 }
 
-module.exports = { getTransaccionesByNegocio };
+// controllers/transacciones.js
+// const admin = require('firebase-admin');
 
+async function getEgresosByMonth(req, res) {
+  try {
+    const { idNegocio, year, month } = req.params;
 
-module.exports = { createTransaccion, getTransaccionesByNegocio };
+    if (!idNegocio || !year || !month) {
+      return res.status(400).json({ message: 'idNegocio, year y month son requeridos' });
+    }
+
+    const yearInt = parseInt(year, 10);
+    const monthInt = parseInt(month, 10);
+
+    if (isNaN(yearInt) || isNaN(monthInt) || monthInt < 1 || monthInt > 12) {
+      return res.status(400).json({ message: 'Mes o año inválidos' });
+    }
+
+    // Rango de fechas del mes (local server time)
+    const startDate = new Date(yearInt, monthInt - 1, 1, 0, 0, 0, 0);
+    const endDate   = new Date(yearInt, monthInt, 0, 23, 59, 59, 999);
+
+    // Consulta: solo EGRESOS (tipo = true) del negocio en ese mes
+    const snap = await admin.firestore()
+      .collection('transacciones')
+      .where('idNegocio', '==', idNegocio)
+      .where('tipo', '==', true) // true = egreso
+      .where('fecha', '>=', startDate)
+      .where('fecha', '<=', endDate)
+      .get();
+
+    // Sumatoria
+    let totalEgresos = 0;
+    const transacciones = snap.docs.map(doc => {
+      const d = doc.data();
+      const monto = Number(d.monto) || 0;
+      totalEgresos += monto;
+
+      const fecha = d.fecha?.toDate ? d.fecha.toDate() : d.fecha;
+      return {
+        idTransaccion: doc.id,
+        monto,
+        descripcion: d.descripcion ?? '',
+        fecha: fecha ?? null,
+        fechaISO: fecha instanceof Date ? fecha.toISOString() : null
+      };
+    });
+
+    return res.status(200).json({
+      message: `Total de egresos del negocio ${idNegocio} en ${monthInt}/${yearInt}`,
+      idNegocio,
+      year: yearInt,
+      month: monthInt,
+      totalEgresos,
+      count: transacciones.length,
+      data: transacciones // si no quieres el detalle, quítalo
+    });
+
+  } catch (error) {
+    console.error('Error al obtener egresos por mes:', error);
+    return res.status(500).json({
+      message: 'Error al obtener egresos por mes',
+      error: error.message
+    });
+  }
+}
+
+// Suma de egresos por mes (versión corta)
+async function getEgresosByMonthShort(req, res) {
+  try {
+    const { idNegocio, year, month } = req.params;
+    if (!idNegocio || !year || !month) {
+      return res.status(400).json({ message: 'idNegocio, year y month son requeridos' });
+    }
+
+    const y = Number(year);
+    const m = Number(month);
+    if (!Number.isInteger(y) || !Number.isInteger(m) || m < 1 || m > 12) {
+      return res.status(400).json({ message: 'Mes o año inválidos' });
+    }
+
+    // [start, next) → evita problemas de 23:59:59.999
+    const start = new Date(y, m - 1, 1, 0, 0, 0, 0);
+    const next  = new Date(y, m, 1, 0, 0, 0, 0);
+
+    const snap = await admin.firestore()
+      .collection('transacciones')
+      .where('idNegocio', '==', idNegocio)
+      .where('tipo', '==', true)        // true = egreso
+      .where('fecha', '>=', start)
+      .where('fecha', '<', next)
+      .get();
+
+    let totalEgresos = 0;
+    snap.forEach(doc => totalEgresos += (Number(doc.get('monto')) || 0));
+
+    return res.status(200).json({
+      idNegocio,
+      year: y,
+      month: m,
+      totalEgresos,
+      count: snap.size
+    });
+  } catch (error) {
+    console.error('Error al obtener egresos por mes:', error);
+    return res.status(500).json({ message: 'Error al obtener egresos por mes', error: error.message });
+  }
+}
+
+module.exports = { createTransaccion, getTransaccionesByNegocio, getEgresosByMonth, getEgresosByMonthShort };
