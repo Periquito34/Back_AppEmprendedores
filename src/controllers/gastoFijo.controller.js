@@ -1,6 +1,7 @@
 const admin = require('firebase-admin');
 const GastosFijos = require('../models/gastoFijo.model');
 
+/*
 async function createGastoFijo(req, res) {
   try {
     const { idNegocio, nombreGasto, costoGasto, descripcion, recurrencia, fechasEjecucion, pagado = false } = req.body;
@@ -43,7 +44,66 @@ async function createGastoFijo(req, res) {
     });
   }
 }
+*/
 
+async function createGastoFijo(req, res) {
+  try {
+    const {
+      idNegocio,
+      nombreGasto,
+      costoGasto,
+      descripcion,
+      recurrencia,
+      fechasEjecucion,
+      pagado = false
+    } = req.body;
+
+    // Generar un ID único para el gasto
+    const idGasto = admin.firestore().collection('gastosFijos').doc().id;
+
+    // Definir la próxima fecha de reset
+    const proximaFechaReset = Array.isArray(fechasEjecucion)
+      ? fechasEjecucion[0]
+      : fechasEjecucion;
+
+    // Crear la instancia del modelo
+    const newGastoFijo = new GastosFijos(
+      idGasto,
+      idNegocio,
+      nombreGasto,
+      costoGasto,
+      descripcion,
+      recurrencia,
+      fechasEjecucion,
+      proximaFechaReset,
+      pagado
+    );
+
+    // Guardar en Firestore
+    await admin.firestore().collection('gastosFijos').doc(idGasto).set({
+      idGasto: newGastoFijo.idGasto,
+      idNegocio: newGastoFijo.idNegocio,
+      nombreGasto: newGastoFijo.nombreGasto,
+      costoGasto: newGastoFijo.costoGasto,
+      descripcion: newGastoFijo.descripcion,
+      recurrencia: newGastoFijo.recurrencia,
+      fechasEjecucion: newGastoFijo.fechasEjecucion,
+      proximaFechaReset: newGastoFijo.proximaFechaReset,
+      pagado: newGastoFijo.pagado,
+      createdAt: newGastoFijo.createdAt
+    });
+
+    return res.status(201).json({
+      message: 'Gasto fijo creado con éxito',
+      data: newGastoFijo
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Error al crear gasto fijo',
+      error: error.message
+    });
+  }
+}
 
 // Marcar un gasto fijo como pagado
 async function markGastoFijoAsPaid(req, res) {
@@ -76,6 +136,7 @@ async function markGastoFijoAsPaid(req, res) {
     });
   }
 }
+
 
 // Obtener gastos fijos por negocio (sumando costoGasto)
 async function getGastosFijosByBusiness(req, res) {

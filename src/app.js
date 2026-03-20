@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 
+const { iniciarJobGastosFijos } = require('./jobs/gastosFIjos.job');
 const userRoutes = require('./routes/user.routes');
 const BusinessRoutes = require('./routes/business.routes');
 const aiRecomendationRoutes= require('./routes/aiRecomendation.routes');
@@ -38,4 +39,5 @@ app.get('/', (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);
+  iniciarJobGastosFijos(); // Iniciar el job de gastos fijos al arrancar el servidor
 });
