@@ -229,4 +229,4 @@ async function getRentabilidadLive(req, res) {
   }
 }
 
-module.exports = { createRentabilidadMensual, getRentabilidadLive };
+module.exports = { createRentabilidadMensual, getRentabilidadLive, computeRentabilidadMes };

@@ -15,6 +15,7 @@ const gastoFijoRoutes = require('./routes/gastoFijo.routes');
 const rentabilidadRoutes = require('./routes/rentabilidad.routes');
 const gastoFijoPagadoRoutes = require('./routes/gastoFijoPagado.routes');
 const balanceSemanalRoutes = require('./routes/balanceSemanal.routes');
+const balancePDFRoutes = require('./routes/balancePDF.routes');
 
 
 
@@ -34,6 +35,7 @@ app.use('/api/gasto-fijo', gastoFijoRoutes);
 app.use('/api/rentabilidad', rentabilidadRoutes);
 app.use('/api/gasto-fijo-pagado', gastoFijoPagadoRoutes);
 app.use('/api/balance-semanal', balanceSemanalRoutes);
+app.use('/api/balance-pdf', balancePDFRoutes);
 
 // Prueba de servidor
 app.get('/', (req, res) => {
