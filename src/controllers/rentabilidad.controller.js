@@ -1,6 +1,27 @@
 const { admin, db } = require('../config/firebase');
 const RentabilidadMensual = require('../models/rentabilidad.model');
+const { crearRentabilidadMensualService } = require('../services/rentabilidadMensual.service');
 
+async function createRentabilidadMensual(req, res) {
+  try {
+    const { idNegocio, year, month } = req.params;
+
+    const resultado = await crearRentabilidadMensualService(idNegocio, year, month);
+
+    return res.status(201).json({
+      message: 'Rentabilidad mensual registrada con éxito',
+      data: resultado
+    });
+  } catch (error) {
+    console.error('Error al registrar rentabilidad mensual:', error);
+
+    return res.status(500).json({
+      message: 'Error al registrar rentabilidad mensual',
+      error: error.message
+    });
+  }
+}
+/*
 // POST /rentabilidad/:idNegocio/:year/:month
 async function createRentabilidadMensual(req, res) {
   try {
@@ -113,6 +134,7 @@ async function createRentabilidadMensual(req, res) {
     });
   }
 }
+*/
 
 async function computeRentabilidadMes(idNegocio, yearInt, monthInt) {
   // Rango [start, next)

@@ -1,4 +1,4 @@
-const admin = require('firebase-admin');
+const { admin, db } = require('../config/firebase');
 
 function normalizarFecha(fecha) {
   const d = new Date(fecha);

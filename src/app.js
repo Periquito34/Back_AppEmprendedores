@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 
+const { iniciarJobRentabilidad } = require('./jobs/rentabilidad.job');
 const { iniciarJobGastosFijos } = require('./jobs/gastosFIjos.job');
 const userRoutes = require('./routes/user.routes');
 const BusinessRoutes = require('./routes/business.routes');
@@ -13,6 +14,8 @@ const transactionRoutes = require('./routes/transaction.routes');
 const gastoFijoRoutes = require('./routes/gastoFijo.routes');
 const rentabilidadRoutes = require('./routes/rentabilidad.routes');
 const gastoFijoPagadoRoutes = require('./routes/gastoFijoPagado.routes');
+const balanceSemanalRoutes = require('./routes/balanceSemanal.routes');
+
 
 
 const app = express();
@@ -30,6 +33,7 @@ app.use('/api/transaction', transactionRoutes);
 app.use('/api/gasto-fijo', gastoFijoRoutes);
 app.use('/api/rentabilidad', rentabilidadRoutes);
 app.use('/api/gasto-fijo-pagado', gastoFijoPagadoRoutes);
+app.use('/api/balance-semanal', balanceSemanalRoutes);
 
 // Prueba de servidor
 app.get('/', (req, res) => {
@@ -40,4 +44,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);
   iniciarJobGastosFijos(); // Iniciar el job de gastos fijos al arrancar el servidor
+  iniciarJobRentabilidad(); // Iniciar el job de rentabilidad al arrancar el servidor
 });
