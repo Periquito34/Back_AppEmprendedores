@@ -102,4 +102,49 @@ async function getRecomendacionesByTipo(req, res) {
     });
   }
 }
-module.exports = { createRecomendacion, getAllRecomendaciones, getRecomendacionesByTipo };
+
+async function getRecomendacionesByNegocio(req, res) {
+  try {
+    const { idNegocio } = req.params;
+
+    if (!idNegocio) {
+      return res.status(400).json({
+        message: 'idNegocio es requerido'
+      });
+    }
+
+    const snapshot = await admin.firestore()
+      .collection('recomendaciones')
+      .where('idNegocio', '==', idNegocio)
+      .orderBy('fechaGeneracion', 'desc')
+      .get();
+
+    if (snapshot.empty) {
+      return res.status(200).json({
+        message: 'No hay recomendaciones para este negocio',
+        data: []
+      });
+    }
+
+    const recomendaciones = [];
+
+    snapshot.forEach(doc => {
+      recomendaciones.push(doc.data());
+    });
+
+    return res.status(200).json({
+      message: 'Recomendaciones del negocio obtenidas',
+      total: recomendaciones.length,
+      data: recomendaciones
+    });
+
+  } catch (error) {
+    console.error('Error al obtener recomendaciones por negocio:', error);
+    return res.status(500).json({
+      message: 'Error al obtener recomendaciones',
+      error: error.message
+    });
+  }
+}
+
+module.exports = { createRecomendacion, getAllRecomendaciones, getRecomendacionesByTipo, getRecomendacionesByNegocio };

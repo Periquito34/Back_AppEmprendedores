@@ -166,8 +166,9 @@ async function getBalancesByNegocio(req, res) {
   }
 }
 
+
 module.exports = {
   createBalanceSemanal,
   getAllBalancesSemanales,
-  getBalancesByNegocio
+  getBalancesByNegocio,
 };
