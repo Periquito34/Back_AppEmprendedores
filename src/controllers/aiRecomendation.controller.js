@@ -24,4 +24,82 @@ async function createRecomendacion(req, res) {
   }
 }
 
-module.exports = { createRecomendacion };
+async function getAllRecomendaciones(req, res) {
+  try {
+    const snapshot = await admin.firestore()
+      .collection('recomendaciones')
+      .orderBy('fechaGeneracion', 'desc')
+      .get();
+
+    if (snapshot.empty) {
+      return res.status(200).json({
+        message: 'No hay recomendaciones',
+        data: []
+      });
+    }
+
+    const recomendaciones = [];
+
+    snapshot.forEach(doc => {
+      recomendaciones.push(doc.data());
+    });
+
+    return res.status(200).json({
+      message: 'Recomendaciones obtenidas',
+      total: recomendaciones.length,
+      data: recomendaciones
+    });
+
+  } catch (error) {
+    console.error('Error al obtener recomendaciones:', error);
+    return res.status(500).json({
+      message: 'Error al obtener recomendaciones',
+      error: error.message
+    });
+  }
+}
+
+async function getRecomendacionesByTipo(req, res) {
+  try {
+    const { tipo } = req.params;
+
+    if (!tipo) {
+      return res.status(400).json({
+        message: 'tipo es requerido'
+      });
+    }
+
+    const snapshot = await admin.firestore()
+      .collection('recomendaciones')
+      .where('tipo', '==', tipo)
+      .orderBy('fechaGeneracion', 'desc')
+      .get();
+
+    if (snapshot.empty) {
+      return res.status(200).json({
+        message: 'No hay recomendaciones de este tipo',
+        data: []
+      });
+    }
+
+    const recomendaciones = [];
+
+    snapshot.forEach(doc => {
+      recomendaciones.push(doc.data());
+    });
+
+    return res.status(200).json({
+      message: 'Recomendaciones por tipo obtenidas',
+      total: recomendaciones.length,
+      data: recomendaciones
+    });
+
+  } catch (error) {
+    console.error('Error al obtener recomendaciones por tipo:', error);
+    return res.status(500).json({
+      message: 'Error al obtener recomendaciones',
+      error: error.message
+    });
+  }
+}
+module.exports = { createRecomendacion, getAllRecomendaciones, getRecomendacionesByTipo };
