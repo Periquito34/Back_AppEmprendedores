@@ -1,13 +1,17 @@
-const admin = require('firebase-admin');
-const path = require('path');
+const admin = require("firebase-admin");
 
-const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT || './serviceAccountKey.json';
-const serviceAccount = require(path.resolve(serviceAccountPath));
-
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  storageBucket: process.env.FIREBASE_STORAGE_BUCKET || 'your-project-id.appspot.com'
-});
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert({
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+    }),
+    storageBucket:
+      process.env.FIREBASE_STORAGE_BUCKET ||
+      `${process.env.FIREBASE_PROJECT_ID}.appspot.com`,
+  });
+}
 
 const db = admin.firestore();
 const auth = admin.auth();
