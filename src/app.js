@@ -16,11 +16,30 @@ const rentabilidadRoutes = require('./routes/rentabilidad.routes');
 const gastoFijoPagadoRoutes = require('./routes/gastoFijoPagado.routes');
 const balanceSemanalRoutes = require('./routes/balanceSemanal.routes');
 const balancePDFRoutes = require('./routes/balancePDF.routes');
+const balanceGeneralRoutes = require('./routes/balanceGeneral.routes');
 
 
 
 const app = express();
-app.use(cors());
+// Orígenes permitidos: web publicada, desarrollo local y app Android (Capacitor).
+// Se puede sobrescribir con ALLOWED_ORIGINS="https://a.com,https://b.com"
+const DEFAULT_ALLOWED_ORIGINS = [
+  'https://app-emprendedores-movil2.vercel.app',
+  'http://localhost:8100',
+  'http://127.0.0.1:8100',
+  'capacitor://localhost',
+  'https://localhost',
+  'http://localhost'
+];
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || DEFAULT_ALLOWED_ORIGINS.join(','))
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+app.use(cors({
+  // Sin Origin = petición servidor a servidor (p. ej. IA_Service): CORS no aplica
+  origin: (origin, callback) => callback(null, !origin || allowedOrigins.includes(origin))
+}));
 app.use(express.json());
 
 // Rutas
@@ -36,6 +55,7 @@ app.use('/api/rentabilidad', rentabilidadRoutes);
 app.use('/api/gasto-fijo-pagado', gastoFijoPagadoRoutes);
 app.use('/api/balance-semanal', balanceSemanalRoutes);
 app.use('/api/balance-pdf', balancePDFRoutes);
+app.use('/api/balance-general', balanceGeneralRoutes);
 
 // Prueba de servidor
 app.get('/', (req, res) => {

@@ -88,7 +88,7 @@ async function updateUserByUid(req, res) {
   try {
     const pathUid = (req.params.uid || '').trim();
     const requesterUid = req.user?.uid;
-    const isAdmin = !!req.user?.claims?.admin; // custom claim "admin"
+    const isAdmin = req.user?.admin === true; // custom claim "admin" (va en la raiz del token decodificado)
 
     if (!pathUid) {
       return res.status(400).json({ message: 'Falta :uid en la URL' });

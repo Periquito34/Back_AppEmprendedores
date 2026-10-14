@@ -77,7 +77,7 @@ async function getProductsByBusiness(req, res) {
       .get();
 
     if (snapshot.empty) {
-      return res.status(404).json({ message: 'No se encontraron productos para este negocio' });
+      return res.status(200).json({ message: `Productos del negocio ${idNegocio}`, data: [] });
     }
 
     const products = snapshot.docs.map(doc => ({

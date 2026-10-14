@@ -153,7 +153,12 @@ async function getGastosFijosByBusiness(req, res) {
       .get();
 
     if (snapshot.empty) {
-      return res.status(404).json({ message: 'No se encontraron gastos fijos para este negocio' });
+      return res.status(200).json({
+        message: `Gastos fijos del negocio ${idNegocio}`,
+        totals: { totalGastos: 0, totalPagados: 0, totalNoPagados: 0 },
+        counts: { total: 0, pagados: 0, noPagados: 0 },
+        data: []
+      });
     }
 
     let totalCostos = 0;
@@ -282,17 +287,12 @@ async function getGastosFijosPagadosByMonth(req, res) {
       .get();
 
     if (snapshot.empty) {
-      // Si prefieres 200 con total=0, cambia este return por el bloque de abajo comentado
-      return res.status(404).json({ message: 'No se encontraron gastos pagados en ese mes' });
-
-      /*
       return res.status(200).json({
         message: `Gastos fijos pagados del negocio ${idNegocio} en ${monthInt}/${yearInt}`,
         totalGastosPagados: 0,
         count: 0,
         data: []
       });
-      */
     }
 
     let totalGastosPagados = 0;

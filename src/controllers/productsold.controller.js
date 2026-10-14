@@ -82,7 +82,7 @@ async function getProductosVendidosByProducto(req, res) {
       .get();
 
     if (snapshot.empty) {
-      return res.status(404).json({ message: 'No se encontraron ventas para este producto' });
+      return res.status(200).json({ message: `Ventas encontradas para el producto con ID ${idProducto}`, data: [] });
     }
 
     const productosVendidos = snapshot.docs.map(doc => ({
@@ -134,7 +134,7 @@ async function getProductosVendidosByMonth(req, res) {
       .get();
 
     if (snapshot.empty) {
-      return res.status(404).json({ message: 'No se encontraron ventas de este producto en ese mes' });
+      return res.status(200).json({ message: `Ventas del producto ${idProducto} en ${month}/${year}`, data: [] });
     }
 
     const productosVendidos = snapshot.docs.map(doc => ({
@@ -185,7 +185,12 @@ async function getResumenVentasByMonth(req, res) {
       .get();
 
     if (snapshot.empty) {
-      return res.status(404).json({ message: 'No se encontraron ventas de este producto en ese mes' });
+      return res.status(200).json({
+        message: `Resumen de ventas del producto ${idProducto} en ${month}/${year}`,
+        totalCantidadVendida: 0,
+        totalVentas: 0,
+        data: []
+      });
     }
 
     let totalCantidadVendida = 0;

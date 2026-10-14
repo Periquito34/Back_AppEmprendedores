@@ -95,9 +95,7 @@ async function getBusinessByUserId(req, res) {
       .get();
 
     if (snapshot.empty) {
-      return res.status(404).json({
-        message: 'No se encontraron negocios para este usuario',
-      });
+      return res.status(200).json({ message: 'El usuario no tiene negocios', data: [] });
     }
 
     const businesses = [];

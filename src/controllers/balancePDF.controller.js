@@ -1,58 +1,54 @@
 const { admin } = require('../config/firebase');
-const { generarYSubirPdfBalance } = require('../services/balancePDF.service');
+const { sortByDateDesc } = require('../utils/sortByDate');
+const { generarPdfBalance } = require('../services/balancePDF.service');
 
+// Envia el PDF como archivo descargable
+function enviarPdf(res, pdfBuffer, weekKey) {
+  const nombre = `balance-${String(weekKey || 'semanal').replace(/[^\w-]/g, '')}.pdf`;
+  res.set({
+    'Content-Type': 'application/pdf',
+    'Content-Disposition': `attachment; filename="${nombre}"`,
+    'Content-Length': pdfBuffer.length,
+    'Cache-Control': 'no-store'
+  });
+  return res.status(200).send(pdfBuffer);
+}
+
+// POST - Genera el PDF del balance, lo registra en "PDF generados" y lo devuelve.
+// El PDF no se guarda en Storage: se genera de nuevo al descargarlo (ver descargarPdfBalanceSemanal).
+// req.recurso lo deja requireRecursoOwner('balancesSemanales', 'idBalance')
 async function generarPdfBalanceSemanal(req, res) {
   try {
-    const { idBalance } = req.params;
-
-    if (!idBalance) {
-      return res.status(400).json({
-        message: 'idBalance es requerido'
-      });
-    }
-
-    const balanceRef = admin.firestore().collection('balancesSemanales').doc(idBalance);
-    const balanceSnap = await balanceRef.get();
-
-    if (!balanceSnap.exists) {
-      return res.status(404).json({
-        message: 'No se encontró el balance semanal'
-      });
-    }
-
-    const balanceData = balanceSnap.data();
-
-    const { pdfUrl, pdfPath } = await generarYSubirPdfBalance(balanceData);
+    const balanceData = req.recurso;
+    const pdfBuffer = await generarPdfBalance(balanceData);
 
     const idReporte = admin.firestore().collection('reportesBalance').doc().id;
-
     await admin.firestore().collection('reportesBalance').doc(idReporte).set({
       idReporte,
-      idBalance,
+      idBalance: balanceData.id,
       idNegocio: balanceData.idNegocio,
       weekKey: balanceData.weekKey,
-      pdfUrl,
-      pdfPath,
       createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
-    return res.status(201).json({
-      message: 'PDF generado con éxito',
-      data: {
-        idReporte,
-        idBalance,
-        idNegocio: balanceData.idNegocio,
-        weekKey: balanceData.weekKey,
-        pdfUrl,
-        pdfPath
-      }
-    });
+    return enviarPdf(res, pdfBuffer, balanceData.weekKey);
   } catch (error) {
     console.error('Error al generar PDF del balance:', error);
     return res.status(500).json({
       message: 'Error al generar PDF del balance',
       error: error.message
     });
+  }
+}
+
+// GET - Vuelve a generar el PDF de un balance para descargarlo (sin registrar un reporte nuevo)
+async function descargarPdfBalanceSemanal(req, res) {
+  try {
+    const pdfBuffer = await generarPdfBalance(req.recurso);
+    return enviarPdf(res, pdfBuffer, req.recurso.weekKey);
+  } catch (error) {
+    console.error('Error al descargar PDF del balance:', error);
+    return res.status(500).json({ message: 'Error al generar PDF del balance', error: error.message });
   }
 }
 
@@ -69,7 +65,6 @@ async function getReportesBalanceByNegocio(req, res) {
     const snapshot = await admin.firestore()
       .collection('reportesBalance')
       .where('idNegocio', '==', idNegocio)
-      .orderBy('createdAt', 'desc')
       .get();
 
     if (snapshot.empty) {
@@ -79,7 +74,7 @@ async function getReportesBalanceByNegocio(req, res) {
       });
     }
 
-    const reportes = snapshot.docs.map(doc => doc.data());
+    const reportes = sortByDateDesc(snapshot.docs.map(doc => doc.data()), 'createdAt');
 
     return res.status(200).json({
       message: 'Reportes obtenidos con éxito',
@@ -96,6 +91,7 @@ async function getReportesBalanceByNegocio(req, res) {
 }
 
 module.exports = {
+  descargarPdfBalanceSemanal,
   generarPdfBalanceSemanal,
   getReportesBalanceByNegocio
 };

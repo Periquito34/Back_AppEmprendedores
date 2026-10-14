@@ -1,4 +1,6 @@
 const admin = require('firebase-admin');
+const { docsDeNegociosDelUsuario } = require('../middleware/ownership');
+const { sortByDateDesc } = require('../utils/sortByDate');
 const BalanceSemanal = require('../models/balanceSemanal.model');
 
 async function createBalanceSemanal(req, res) {
@@ -89,26 +91,11 @@ async function createBalanceSemanal(req, res) {
 
 async function getAllBalancesSemanales(req, res) {
   try {
-    const snapshot = await admin.firestore()
-      .collection('balancesSemanales')
-      .orderBy('createdAt', 'desc')
-      .get();
-
-    if (snapshot.empty) {
-      return res.status(200).json({
-        message: 'No hay balances registrados',
-        data: []
-      });
-    }
-
-    const balances = [];
-
-    snapshot.forEach(doc => {
-      balances.push(doc.data());
-    });
+    const docs = await docsDeNegociosDelUsuario('balancesSemanales', req.user.uid);
+    const balances = sortByDateDesc(docs.map((doc) => doc.data()), 'createdAt');
 
     return res.status(200).json({
-      message: 'Balances obtenidos con éxito',
+      message: balances.length ? 'Balances obtenidos con éxito' : 'No hay balances registrados',
       total: balances.length,
       data: balances
     });
@@ -135,7 +122,6 @@ async function getBalancesByNegocio(req, res) {
     const snapshot = await admin.firestore()
       .collection('balancesSemanales')
       .where('idNegocio', '==', idNegocio)
-      .orderBy('weekStart', 'desc')
       .get();
 
     if (snapshot.empty) {
@@ -154,7 +140,7 @@ async function getBalancesByNegocio(req, res) {
     return res.status(200).json({
       message: 'Balances del negocio obtenidos',
       total: balances.length,
-      data: balances
+      data: sortByDateDesc(balances, 'weekStart')
     });
 
   } catch (error) {
