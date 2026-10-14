@@ -1,4 +1,5 @@
 const admin = require('firebase-admin');
+const { docsDeNegociosDelUsuario } = require('../middleware/ownership');
 const GastosFijosPagados = require('../models/gastoFijoPagado');
 
 async function createGastoFijo(req, res) {
@@ -40,12 +41,11 @@ async function createGastoFijo(req, res) {
 
 async function getGastosFijosPagados(req, res) {
   try {
-    const snapshot = await admin.firestore().collection('gastosFijosPagados').get();
+    const docs = await docsDeNegociosDelUsuario('gastosFijosPagados', req.user.uid);
+    const snapshot = { empty: docs.length === 0, forEach: (fn) => docs.forEach(fn) };
 
     if (snapshot.empty) {
-      return res.status(404).json({
-        message: 'No se encontraron gastos fijos pagados'
-      });
+      return res.status(200).json({ message: 'No hay gastos fijos pagados', total: 0, data: [] });
     }
 
     const gastos = [];
